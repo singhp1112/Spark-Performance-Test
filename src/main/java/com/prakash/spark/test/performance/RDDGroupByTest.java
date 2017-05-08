@@ -60,7 +60,7 @@ public class RDDGroupByTest {
 			private static final long serialVersionUID = 1L;
 
 			public Boolean call(String s) {
-				String[] splitString = s.split(",");
+				String[] splitString = s.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
 
 				// System.out.println(splitString[2]);
 				Integer numCritics = StringUtils.isNotBlank(splitString[2]) ? Integer.parseInt(splitString[2]) : 0;
@@ -80,7 +80,7 @@ public class RDDGroupByTest {
 			private static final long serialVersionUID = 1L;
 
 			public Tuple2<String, Float> call(String str) {
-				String[] inputArray = str.split(",");
+				String[] inputArray = str.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
 				String lang = inputArray[19];
 				Float score = Float.parseFloat(inputArray[25]);
 				return new Tuple2<String, Float>(lang, score);
