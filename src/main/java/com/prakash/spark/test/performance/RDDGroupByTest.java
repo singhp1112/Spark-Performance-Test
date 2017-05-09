@@ -18,6 +18,7 @@ import scala.Tuple2;
 /**
  * RDDGroupByTest - Test performance of group by operation on data using spark's
  * RDD APIs Data set - https://www.kaggle.com/deepmatrix/imdb-5000-movie-dataset
+ * Data is duplicated multiple times to make it larger (approx. > 1M)
  * Goal is to find average rating per language. Consider only those movies which
  * are color and whose number of critic reviews are more than 100
  */
@@ -29,16 +30,14 @@ public class RDDGroupByTest {
 
 		// read csv data as text file
 
-		JavaRDD<String> rddInput = jsc.textFile("/Users/psingh/Documents/movie_metadata.csv"); 
+		JavaRDD<String> rddInput = jsc.textFile("/Users/psingh/Documents/updated_movie_metadata.csv"); 
 		// replace with your file path
 
 		// remove first line of csv file
 		String firstLine = rddInput.first();
 
 		JavaRDD<String> skipFirstLine = rddInput.filter(new Function<String, Boolean>() {
-			/**
-			 * Skip header of the csv
-			 */
+			
 			private static final long serialVersionUID = 1L;
 
 			public Boolean call(String s) {
@@ -52,15 +51,27 @@ public class RDDGroupByTest {
 			}
 		});
 
-		JavaRDD<String> filteredInput = skipFirstLine.filter(new Function<String, Boolean>() {
+		//create RDD of string array
+		
+		JavaRDD<String[]> splitRDD = skipFirstLine.map(new Function<String,String[]>(){
+			/**
+			 * 
+			 */
+			private static final long serialVersionUID = 1L;
+
+			public String[] call(String str){
+				return str.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+			}
+		});
+		
+		JavaRDD<String[]> filteredInput = splitRDD.filter(new Function<String[], Boolean>() {
 			/**
 			 * Select only color movies and whose critic reviews are more than
 			 * 100
 			 */
 			private static final long serialVersionUID = 1L;
 
-			public Boolean call(String s) {
-				String[] splitString = s.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+			public Boolean call(String[] splitString) {
 
 				// System.out.println(splitString[2]);
 				Integer numCritics = StringUtils.isNotBlank(splitString[2]) ? Integer.parseInt(splitString[2]) : 0;
@@ -73,14 +84,13 @@ public class RDDGroupByTest {
 
 		// create pair RDD
 
-		JavaPairRDD<String, Float> pairInputRDD = filteredInput.mapToPair(new PairFunction<String, String, Float>() {
+		JavaPairRDD<String, Float> pairInputRDD = filteredInput.mapToPair(new PairFunction<String[], String, Float>() {
 			/**
 			 * Create pair RDD for group by operations
 			 */
 			private static final long serialVersionUID = 1L;
 
-			public Tuple2<String, Float> call(String str) {
-				String[] inputArray = str.split(",(?=([^\"]*\"[^\"]*\")*[^\"]*$)");
+			public Tuple2<String, Float> call(String[] inputArray) {
 				String lang = inputArray[19];
 				Float score = Float.parseFloat(inputArray[25]);
 				return new Tuple2<String, Float>(lang, score);
