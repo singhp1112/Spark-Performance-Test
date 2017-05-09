@@ -9,20 +9,21 @@ import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 
-public class DfGroupByTest {
+public class DSGroupByTest {
 
 	public static void main(String[] args) {
 		/**
 		 * DfGroupByTest - Test performance of group by operation on data using spark's
 		 * Dataframe APIs (Dataset of Row objects) 
 		 * Data set - https://www.kaggle.com/deepmatrix/imdb-5000-movie-dataset
+		 * Data is duplicated multiple times to make it larger (approx. > 1M)
 		 * Goal is to find average rating per language. Consider only those movies which
 		 * are color and whose number of critic reviews are more than 100
 		 */
 		
 		SparkSession spark = SparkSession.builder()
 				.master("local")
-				.appName("Dataframe Group By Test")
+				.appName("Dataset of Row Group By Test")
 				.config("spark.eventLog.enabled", "true")
 				.getOrCreate();
 		
@@ -32,7 +33,8 @@ public class DfGroupByTest {
 				.format("csv")
 				.option("header", true)
 				.option("inferSchema", true)
-				.load("/Users/psingh/Documents/movie_metadata.csv");
+				.load("/Users/psingh/Documents/updated_movie_metadata.csv"); //update with your file location
+		//source of data https://www.kaggle.com/deepmatrix/imdb-5000-movie-dataset
 		
 		//dtst.printSchema();
 		//register this dataset as a temp table
@@ -42,16 +44,26 @@ public class DfGroupByTest {
 		Dataset<Row> queryResult = spark
 				.sql(
 						"select "
-						+ "language, "
-						+ "avg(imdb_score) "
+						+ "language,"
+						+ "coalesce(imdb_score,0.0) as imdbScore,"
+						+ "coalesce(num_critic_for_reviews,0) as numCritics "
 						+ "from tempMovieTable "
-						+ "where num_critic_for_reviews > 100 "
-						+ "and color=\"Color\" "
+						+ "where color=\"Color\""
+						);
+		
+		queryResult.createOrReplaceTempView("tempMovieTableFormatted");
+		Dataset<Row> queryResult2 = spark
+				.sql(
+						"select "
+						+ "language, "
+						+ "avg(imdbScore) "
+						+ "from tempMovieTableFormatted "
+						+ "where numCritics > 100 "
 						+ "group by language "
 						);
 		
 		//Display result
-		queryResult.foreach(new ForeachFunction<Row>() {
+		queryResult2.foreach(new ForeachFunction<Row>() {
 			
 			/**
 			 * Display each Row by iterating over RDD
