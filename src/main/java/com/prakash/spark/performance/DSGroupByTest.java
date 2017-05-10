@@ -1,4 +1,4 @@
-package com.prakash.spark.test.performance;
+package com.prakash.spark.performance;
 
 /**
 * @author psingh
